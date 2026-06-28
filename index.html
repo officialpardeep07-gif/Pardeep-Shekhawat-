@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevVault // Pardeep Shekhawat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            black: '#030712',
+                            dark: '#0b1129',
+                            blue: '#3b82f6',
+                            neon: '#00f2fe'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: background-color 0.3s ease;
+        }
+        .dark body {
+            background-color: #030712;
+            background-image: radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.15) 0%, transparent 60%);
+        }
+        html:not(.dark) body {
+            background-color: #f8fafc;
+            background-image: radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
+        }
+        .glass-card {
+            transition: all 0.3s ease;
+        }
+        .dark .glass-card {
+            background: rgba(11, 17, 41, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.12);
+        }
+        html:not(.dark) .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            box-shadow: 0 4px 20px -2px rgba(50, 50, 93, 0.1);
+        }
+        /* Auto Changing Neon Text Glow Animation */
+        .neon-glow {
+            font-family: 'Orbitron', sans-serif;
+            color: #ffffff;
+            animation: pulseGlow 8s infinite alternate;
+        }
+        @keyframes pulseGlow {
+            0% { 
+                text-shadow: 0 0 5px rgba(59, 130, 246, 0.6), 0 0 10px #3b82f6, 0 0 20px #00f2fe;
+                color: #fff;
+            }
+            33% { 
+                text-shadow: 0 0 5px rgba(168, 85, 247, 0.6), 0 0 10px #a855f7, 0 0 20px #ec4899;
+                color: #f3e8ff;
+            }
+            66% {
+                text-shadow: 0 0 5px rgba(16, 185, 129, 0.6), 0 0 10px #10b981, 0 0 20px #06b6d4;
+                color: #e6fffa;
+            }
+            100% { 
+                text-shadow: 0 0 10px rgba(59, 130, 246, 0.9), 0 0 25px #3b82f6, 0 0 50px #00f2fe;
+                color: #fff;
+            }
+        }
+    </style>
+</head>
+<!-- Removed overflow-hidden from main body tag to allow standard layout handling -->
+<body class="text-slate-200 dark:text-slate-200 html:not(.dark):text-slate-800 min-h-screen flex">
+
+    <div id="toast" class="fixed top-5 right-5 z-50 glass-card bg-blue-500/10 border-blue-500/30 px-5 py-3 rounded-xl flex items-center gap-3 shadow-xl transition-all duration-300 opacity-0 transform translate-y-[-20px] pointer-events-none">
+        <i class="fa-solid fa-circle-nodes text-brand-neon animate-spin"></i>
+        <div class="text-xs">
+            <p class="font-bold text-slate-800 dark:text-white" id="toast-title">System Active</p>
+            <p class="text-slate-500 dark:text-slate-400" id="toast-desc">Module initialized.</p>
+        </div>
+    </div>
+
+    <!-- Added height restriction and internal scrolling to sidebar so page scrolling isn't broken -->
+    <aside id="sidebar-panel" class="fixed inset-y-0 left-0 w-72 border-r border-slate-300/60 dark:border-slate-800/60 bg-white/95 dark:bg-[#060a17]/95 p-5 flex flex-col justify-between transform -translate-x-full lg:translate-x-0 lg:static lg:flex shrink-0 h-screen overflow-y-auto z-30 transition-transform duration-300 ease-in-out text-slate-800 dark:text-slate-200">
+        <div class="space-y-6 pr-1">
+            <div class="flex items-center justify-between px-2">
+                <div class="flex items-center gap-3">
+                    <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <i class="fa-solid fa-terminal text-white text-xs"></i>
+                    </div>
+                    <span class="text-md font-bold tracking-wider font-mono text-slate-900 dark:text-white">CORE_VAULT v2</span>
+                </div>
+                <button onclick="toggleSidebar()" class="lg:hidden text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white text-sm">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <nav class="space-y-1" id="sidebar-nav">
+                <p class="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pt-2">Overview</p>
+                <button onclick="switchTab('dashboard')" data-tab="dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 bg-blue-600/10 border border-blue-500/20 text-blue-500 dark:text-blue-400 rounded-xl font-medium transition-all text-xs">
+                    <i class="fa-solid fa-chart-pie w-4"></i> Dashboard
+                </button>
+                <button onclick="switchTab('projects')" data-tab="projects" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-code w-4"></i> Projects Pipeline
+                </button>
+                <button onclick="switchTab('passwords')" data-tab="passwords" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-vault w-4"></i> Password Vault
+                </button>
+
+                <p class="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pt-4">Storage Assets</p>
+                <button onclick="switchTab('files')" data-tab="files" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-folder w-4"></i> Files (Docs/ZIP)
+                </button>
+                <button onclick="switchTab('photos')" data-tab="photos" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-image w-4"></i> Photos Gallery
+                </button>
+                <button onclick="switchTab('videos')" data-tab="videos" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-video w-4"></i> Videos Bin
+                </button>
+                <button onclick="switchTab('documents')" data-tab="documents" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-file-lines w-4"></i> Official Documents
+                </button>
+                <button onclick="switchTab('excel')" data-tab="excel" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-file-excel w-4"></i> Excel Sheets
+                </button>
+                <button onclick="switchTab('notes')" data-tab="notes" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-note-sticky w-4"></i> Documentation Notes
+                </button>
+
+                <p class="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pt-4">Maintenance</p>
+                <button onclick="switchTab('backup')" data-tab="backup" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-cloud-arrow-down w-4"></i> Cloud Backup
+                </button>
+                <button onclick="switchTab('settings')" data-tab="settings" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-sliders w-4"></i> Settings Panel
+                </button>
+                <button onclick="switchTab('profile')" data-tab="profile" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 rounded-xl transition-all text-xs">
+                    <i class="fa-solid fa-user-gear w-4"></i> Profile Config
+                </button>
+            </nav>
+        </div>
+
+        <div class="pt-4 mt-auto border-t border-slate-200 dark:border-slate-800/60 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center font-bold text-white text-xs">PS</div>
+                <div>
+                    <h4 class="text-xs font-semibold text-slate-700 dark:text-slate-300">Pardeep S.</h4>
+                    <p class="text-[10px] text-emerald-500 dark:text-emerald-400 font-mono">Root Access</p>
+                </div>
+            </div>
+            <button onclick="toggleTheme()" class="h-7 w-7 rounded-lg bg-slate-200 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center text-xs">
+                <i id="theme-icon" class="fa-solid fa-moon"></i>
+            </button>
+        </div>
+    </aside>
+ <!-- Changed overflow-hidden to allow scrolling on main content screen -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-transparent text-slate-800 dark:text-slate-200">
+        
+        <header class="h-16 border-b border-slate-200 dark:border-slate-800/50 bg-white/80 dark:bg-[#030712]/80 backdrop-blur-md px-6 flex items-center justify-between gap-4 shrink-0 z-10">
+            <div class="flex items-center gap-3 flex-1 max-w-md">
+                <button onclick="toggleSidebar()" class="lg:hidden h-9 w-9 bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="flex-1 relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-xs"></i>
+                    <input type="text" oninput="triggerSearch(this.value)" placeholder="Search anything dynamically..." class="w-full bg-slate-100 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-800 focus:border-blue-500/50 rounded-lg pl-9 pr-4 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none transition-all">
+                </div>
+            </div>
+            <div class="text-[11px] font-mono text-slate-500 bg-slate-200 dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-800/60">
+                Storage Allocation: <span id="storage-percentage" class="text-blue-500 dark:text-blue-400 font-bold">0%</span>
+            </div>
+        </header>
+
+        <div class="flex-1 p-6 space-y-8" id="view-container">
+            
+            <div class="text-center py-8 glass-card rounded-2xl relative overflow-hidden">
+                <p class="text-[10px] font-mono uppercase tracking-widest text-blue-500 dark:text-blue-400/80 mb-1">Workspace Console Authorized To</p>
+                <h1 class="text-3xl md:text-5xl font-black tracking-wider neon-glow uppercase py-1">PARDEEP SHEKHAWAT</h1>
+                <p class="text-sm md:text-md text-cyan-600 dark:text-cyan-400 font-medium tracking-wide mt-2 italic font-mono">I am web developer and designer</p>
+                
+                <!-- Added dedicated dynamic IDs for date and running seconds console clock -->
+                <div class="flex justify-center gap-4 mt-4 text-[11px] text-slate-500 dark:text-slate-500 font-mono">
+                    <span>DATE: <span id="realtime-date" class="text-emerald-500 dark:text-emerald-400 font-bold">DD/MM/YYYY</span></span>
+                    <span>•</span>
+                    <span>TIME: <span id="realtime-clock" class="text-cyan-600 dark:text-cyan-400">00:00:00 AM</span></span>
+                </div>
+            </div>
+            <div id="dynamic-content-pane" class="space-y-6">
+                
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="glass-card p-4 rounded-xl">
+                        <div class="flex justify-between items-start text-slate-500 dark:text-slate-400"><span class="text-xs font-bold uppercase">Sites Built</span><i class="fa-solid fa-globe text-blue-500 dark:text-blue-400"></i></div>
+                        <h3 id="stat-sites" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0</h3>
+                    </div>
+                    <div class="glass-card p-4 rounded-xl">
+                        <div class="flex justify-between items-start text-slate-500 dark:text-slate-400"><span class="text-xs font-bold uppercase">Secure Keys</span><i class="fa-solid fa-key text-emerald-500 dark:text-emerald-400"></i></div>
+                        <h3 id="stat-keys" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0</h3>
+                    </div>
+                    <div class="glass-card p-4 rounded-xl">
+                        <div class="flex justify-between items-start text-slate-500 dark:text-slate-400"><span class="text-xs font-bold uppercase">Archived Files</span><i class="fa-solid fa-box text-indigo-500 dark:text-indigo-400"></i></div>
+                        <h3 id="stat-files" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0</h3>
+                    </div>
+                    <div class="glass-card p-4 rounded-xl">
+                        <div class="flex justify-between items-start text-slate-500 dark:text-slate-400"><span class="text-xs font-bold uppercase">System Notes</span><i class="fa-solid fa-terminal text-amber-500 dark:text-amber-400"></i></div>
+                        <h3 id="stat-notes" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0</h3>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="glass-card rounded-xl p-5 lg:col-span-2">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-white"><i class="fa-solid fa-link text-cyan-500 dark:text-cyan-400 mr-2"></i> Live Site Links Directory</h3>
+                            <span id="site-badge" class="text-[10px] bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 px-2 py-0.5 rounded font-mono">0 Sites Active</span>
+                        </div>
+                        <!-- Changed string info to english text structure -->
+                        <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">All your generated project layouts and shortcuts are listed below. Use the submission link button to update dynamic values inside the system.</p>
+                        
+                        <div id="links-container" class="space-y-2 mb-4">
+                            </div>
+
+                        <div class="flex flex-wrap gap-2 mt-4">
+                            <button onclick="addNewSite()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs transition-all font-mono"><i class="fa-solid fa-plus mr-1"></i> Add New Site Link</button>
+                        </div>
+                    </div>
+
+                    <div class="glass-card rounded-xl p-5">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-white"><i class="fa-solid fa-circle-nodes text-blue-500 mr-1"></i> Quick Controls</h3>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">Sidebar and links console are fully dynamic. Select options to execute work operations.</p>
+                        <div class="space-y-2">
+                            <button onclick="clearDatabase()" class="w-full px-3 py-2 bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-left text-xs hover:bg-slate-300 dark:hover:bg-slate-800 transition-all font-mono"><i class="fa-solid fa-rotate mr-2 text-blue-500 dark:text-blue-400"></i> Clear & Sync Database</button>
+                            <button onclick="switchTab('projects')" class="w-full px-3 py-2 bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-left text-xs hover:bg-slate-300 dark:hover:bg-slate-800 transition-all font-mono"><i class="fa-solid fa-code mr-2 text-emerald-500 dark:text-emerald-400"></i> Manage Pipeline</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyAYe40Tx7yvKOh6zHvBVzoE420F0iGCoCM",
+          authDomain: "pardeep-shekhawat.firebaseapp.com",
+          projectId: "pardeep-shekhawat",
+          storageBucket: "pardeep-shekhawat.firebasestorage.app",
+          messagingSenderId: "494682258424",
+          appId: "1:494682258424:web:1ae8039d5a97eff19c740d",
+          measurementId: "G-62R1FV8G8R"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const dbRef = ref(db, 'vaultData');
+
+        // Local variable structure updated via Firebase in real-time
+        let vaultData = {
+            sites: [],
+            passwords: [],
+            files: [],
+            notes: [],
+            projects: [],
+            photos: [],
+            videos: [],
+            documents: [],
+            excel: []
+        };
+
+        // Realtime Database listener to fetch and sync structured records
+        onValue(dbRef, (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                // Merge data to maintain structure integrity
+                vaultData = {
+                    sites: data.sites || [],
+                    passwords: data.passwords || [],
+                    files: data.files || [],
+                    notes: data.notes || [],
+                    projects: data.projects || [],
+                    photos: data.photos || [],
+                    videos: data.videos || [],
+                    documents: data.documents || [],
+                    excel: data.excel || []
+                };
+            }
+            updateDashboardStats();
+            renderSiteLinks();
+        });
+
+        // Save records instantly to Firebase Realtime Database
+        function saveData() {
+            set(dbRef, vaultData)
+                .then(() => {
+                    updateDashboardStats();
+                })
+                .catch((error) => {
+                    console.error("Firebase Cloud Sync Error: ", error);
+                });
+        }
+
+        // Real-time Clock and Date initialization logic
+        function startRealtimeSystemClock() {
+            const dateEl = document.getElementById('realtime-date');
+            const clockEl = document.getElementById('realtime-clock');
+            
+            function tick() {
+                const now = new Date();
+                
+                // Format Date: DD/MM/YYYY
+                const day = String(now.getDate()).padStart(2, '0');
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const year = now.getFullYear();
+                if(dateEl) dateEl.innerText = `${day}/${month}/${year}`;
+                
+                // Format Time: HH:MM:SS AM/PM
+                let hours = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // convert 0 to 12
+                const hoursStr = String(hours).padStart(2, '0');
+                
+                if(clockEl) clockEl.innerText = `${hoursStr}:${minutes}:${seconds} ${ampm}`;
+            }
+            
+            tick();
+            setInterval(tick, 1000);
+        }
+   // Initialize setups
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('theme') === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-sun';
+            } else {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-moon';
+            }
+            startRealtimeSystemClock();
+        });
+
+        // Sidebar Panel controller
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar-panel');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        // Dynamic Theme controller
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            const icon = document.getElementById('theme-icon');
+            if (isDark) {
+                icon.className = 'fa-solid fa-moon';
+                localStorage.setItem('theme', 'dark');
+                showToast('Theme Toggle', 'Dark mode render cycle active.');
+            } else {
+                icon.className = 'fa-solid fa-sun';
+                localStorage.setItem('theme', 'light');
+                showToast('Theme Toggle', 'Light mode render cycle active.');
+            }
+        }
+
+        // Update Stats values dynamically
+        function updateDashboardStats() {
+            if(document.getElementById('stat-sites')) {
+                document.getElementById('stat-sites').innerText = vaultData.sites.length;
+                document.getElementById('stat-keys').innerText = vaultData.passwords.length;
+                document.getElementById('stat-files').innerText = vaultData.files.length + vaultData.photos.length + vaultData.videos.length + vaultData.documents.length + vaultData.excel.length;
+                document.getElementById('stat-notes').innerText = vaultData.notes.length;
+                document.getElementById('site-badge').innerText = `${vaultData.sites.length} Sites Active`;
+                
+                let totalItems = vaultData.sites.length + vaultData.passwords.length + vaultData.files.length + vaultData.notes.length;
+                let pct = Math.min(100, totalItems * 5); 
+                document.getElementById('storage-percentage').innerText = pct + '%';
+            }
+        }
+
+        // Add site logic map
+        function addNewSite() {
+            let name = prompt("Enter Site/Project Name:");
+            if(!name) return;
+            let url = prompt("Enter Site URL (e.g. https://google.com):", "https://");
+            if(!url) return;
+
+            vaultData.sites.push({ name: name, url: url });
+            saveData();
+            renderSiteLinks();
+            showToast('Site Added', `Successfully injected "${name}" into directory.`);
+        }
+
+        // Render standard link templates 
+        function renderSiteLinks() {
+            const container = document.getElementById('links-container');
+            if(!container) return;
+
+            if(!vaultData.sites || vaultData.sites.length === 0) {
+                container.innerHTML = `
+                    <div class="border border-dashed border-slate-300 dark:border-slate-800 rounded-xl p-6 text-center text-slate-500 text-xs">
+                        <i class="fa-solid fa-folder-open text-xl mb-2 text-slate-400 dark:text-slate-600 block"></i>
+                        No active project links found. Click below to add your first site.
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = vaultData.sites.map((site, index) => `
+                <div class="flex items-center justify-between p-3 bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl text-xs">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-globe text-blue-500"></i>
+                        <span class="font-medium text-slate-800 dark:text-slate-200">${site.name}</span>
+                        <a href="${site.url}" target="_blank" class="text-cyan-500 hover:underline font-mono text-[11px] ml-2">${site.url}</a>
+                    </div>
+                    <button onclick="deleteSite(${index})" class="text-red-400 hover:text-red-500 px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function deleteSite(index) {
+            vaultData.sites.splice(index, 1);
+            saveData();
+            renderSiteLinks();
+            showToast('Deleted', 'Site entry removed.');
+        }
+
+        // Custom tab modular system 
+        function switchTab(viewName) {
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600/10', 'border-blue-500/20', 'text-blue-500', 'text-blue-400');
+                btn.classList.add('text-slate-500', 'dark:text-slate-400', 'hover:bg-slate-200/50', 'dark:hover:bg-slate-800/40', 'hover:text-slate-900', 'dark:hover:text-slate-200');
+            });
+            
+            const activeBtn = document.querySelector(`[data-tab="${viewName}"]`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-slate-500', 'dark:text-slate-400', 'hover:bg-slate-200/50', 'dark:hover:bg-slate-800/40', 'hover:text-slate-900', 'dark:hover:text-slate-200');
+                activeBtn.classList.add('bg-blue-600/10', 'border-blue-500/20', 'text-blue-500');
+            }
+
+            if (window.innerWidth < 1024) {
+                toggleSidebar();
+            }
+
+            if(viewName === 'dashboard') {
+                // Clear active module pane to present baseline template dashboard 
+                const displayPane = document.getElementById('dynamic-content-pane');
+                displayPane.innerHTML = `
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="glass-card p-4 rounded-xl">
+                            <div class="flex justify-between items-start text-slate-500 dark:text-slate-400"><span class="text-xs font-bold uppercase">Sites Built</span><i class="fa-solid fa-globe text-blue-500 dark:text-blue-400"></i></div>
+                            <h3 id="stat-sites" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0</h3>
+                        </div>
+                        <div class="glass-card p-4 rounded-xl">
+                            <div class="flex justify-between items-start text-slate-500 dark:text-slate-400"><span class="text-xs font-bold uppercase">Secure Keys</span><i class="fa-solid fa-key text-emerald-500 dark:text-emerald-400"></i></div>
+                            <h3 id="stat-keys" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0</h3>
+                        </div>
+                        <div class="glass-card p-4 rounded-xl">
+                            <div class="flex justify-between items-start text-slate-500 dark:text-slate-400"><span class="text-xs font-bold uppercase">Archived Files</span><i class="fa-solid fa-box text-indigo-500 dark:text-indigo-400"></i></div>
+                            <h3 id="stat-files" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0</h3>
+                        </div>
+                        <div class="glass-card p-4 rounded-xl">
+                            <div class="flex justify-between items-start text-slate-500 dark:text-slate-400"><span class="text-xs font-bold uppercase">System Notes</span><i class="fa-solid fa-terminal text-amber-500 dark:text-amber-400"></i></div>
+                            <h3 id="stat-notes" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0</h3>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="glass-card rounded-xl p-5 lg:col-span-2">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-sm font-bold text-slate-900 dark:text-white"><i class="fa-solid fa-link text-cyan-500 dark:text-cyan-400 mr-2"></i> Live Site Links Directory</h3>
+                                <span id="site-badge" class="text-[10px] bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 px-2 py-0.5 rounded font-mono">0 Sites Active</span>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">All your generated project layouts and shortcuts are listed below. Use the submission link button to update dynamic values inside the system.</p>
+                            <div id="links-container" class="space-y-2 mb-4"></div>
+                            <div class="flex flex-wrap gap-2 mt-4">
+                                <button onclick="addNewSite()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs transition-all font-mono"><i class="fa-solid fa-plus mr-1"></i> Add New Site Link</button>
+                            </div>
+                        </div>
+                        <div class="glass-card rounded-xl p-5">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="text-sm font-bold text-slate-900 dark:text-white"><i class="fa-solid fa-circle-nodes text-blue-500 mr-1"></i> Quick Controls</h3>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">Sidebar and links console are fully dynamic. Select options to execute work operations.</p>
+                            <div class="space-y-2">
+                                <button onclick="clearDatabase()" class="w-full px-3 py-2 bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-left text-xs hover:bg-slate-300 dark:hover:bg-slate-800 transition-all font-mono"><i class="fa-solid fa-rotate mr-2 text-blue-500 dark:text-blue-400"></i> Clear & Sync Database</button>
+                                <button onclick="switchTab('projects')" class="w-full px-3 py-2 bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-left text-xs hover:bg-slate-300 dark:hover:bg-slate-800 transition-all font-mono"><i class="fa-solid fa-code mr-2 text-emerald-500 dark:text-emerald-400"></i> Manage Pipeline</button>
+                            </div>
+                        </div>
+                    </div>`;
+                updateDashboardStats();
+                renderSiteLinks();
+                return;
+            }
+            const displayPane = document.getElementById('dynamic-content-pane');
+            let formattedTitle = viewName.charAt(0).toUpperCase() + viewName.slice(1);
+            
+            let itemsKey = viewName; 
+            let currentItems = vaultData[itemsKey] || [];
+
+            let htmlContent = `
+                <div class="glass-card rounded-xl p-6 border-l-4 border-blue-500 animate-fadeIn">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-md font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-cube text-blue-500"></i> Active Module: ${formattedTitle} Section
+                        </h2>
+                        <span class="text-[10px] bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded font-mono">Total Saved: ${currentItems.length}</span>
+                    </div>
+<div id="module-items-list" class="space-y-2 mb-4">
+                        ${currentItems.length === 0 ? `<p class="text-xs text-slate-400 italic">No entries recorded in this vault category.</p>` : 
+                            currentItems.map((item, idx) => `
+                                <div class="p-2.5 bg-white/50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-lg text-xs flex justify-between items-center">
+                                    <span class="font-mono text-slate-700 dark:text-slate-300">${typeof item === 'object' ? JSON.stringify(item) : item}</span>
+                                    <button onclick="deleteModuleItem('${itemsKey}', ${idx}, '${viewName}')" class="text-red-400 hover:text-red-500"><i class="fa-solid fa-circle-minus"></i></button>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                    
+                    <div class="mt-6 p-4 bg-slate-100 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800/80">
+                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2"><i class="fa-solid fa-bolt text-amber-500 dark:text-amber-400 mr-1"></i> Database Operations Console</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                            <button onclick="addModuleEntry('${itemsKey}', '${viewName}')" class="w-full text-left p-3 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/60 border border-slate-300 dark:border-slate-800 transition-all flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+                                <span><i class="fa-solid fa-plus-circle text-blue-500 dark:text-blue-400 mr-2"></i> Add entry to ${formattedTitle}</span>
+                                <i class="fa-solid fa-chevron-right text-slate-400 text-[10px]"></i>
+                            </button>
+                            <button onclick="exportDataDump()" class="w-full text-left p-3 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/60 border border-slate-300 dark:border-slate-800 transition-all flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+                                <span><i class="fa-solid fa-file-export text-slate-400 mr-2"></i> Export Encrypted Dump</span>
+                                <i class="fa-solid fa-chevron-right text-slate-400 text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            displayPane.innerHTML = htmlContent;
+            showToast('Module Loaded', `Switched to ${formattedTitle} interface.`);
+        }
+
+        // Dynamic node insert operations
+        function addModuleEntry(key, viewName) {
+            let value = prompt(`Enter new data entry for ${viewName.toUpperCase()}:`);
+            if(!value) return;
+
+            if(!vaultData[key]) vaultData[key] = [];
+            vaultData[key].push(value);
+            saveData();
+            switchTab(viewName); 
+            showToast('Data Stored', 'Vault ecosystem logged item safely.');
+        }
+
+        function deleteModuleItem(key, idx, viewName) {
+            vaultData[key].splice(idx, 1);
+            saveData();
+            switchTab(viewName);
+        }
+
+        // System Toasts UI
+        function showToast(title, description) {
+            const toastEl = document.getElementById('toast');
+            toastEl.querySelector('#toast-title').innerText = title;
+            toastEl.querySelector('#toast-desc').innerText = description;
+            
+            toastEl.classList.remove('opacity-0', 'translate-y-[-20px]', 'pointer-events-none');
+            toastEl.classList.add('opacity-100', 'translate-y-0');
+            
+            setTimeout(() => {
+                toastEl.classList.add('opacity-0', 'translate-y-[-20px]', 'pointer-events-none');
+                toastEl.classList.remove('opacity-100', 'translate-y-0');
+            }, 3000);
+        }
+
+        function triggerSearch(val) {
+            if(val.length > 2) {
+                showToast('Searching Real-time', `Filtering indexes for query: "${val}"`);
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                showToast('Global Search', 'Dynamic filtering layer is active.');
+            }
+        });
+
+        function exportDataDump() {
+            alert(JSON.stringify(vaultData, null, 4));
+            showToast('Export Module', 'Generating JSON payload backup data string.');
+        }
+
+        // Full Database clear node triggers (Text swapped to English)
+        function clearDatabase() {
+            if(confirm("Are you sure you want to completely clear all data variables and reset the system configuration?")) {
+                vaultData = { sites: [], passwords: [], files: [], notes: [], projects: [], photos: [], videos: [], documents: [], excel: [] };
+                saveData();
+                renderSiteLinks();
+                showToast('Data Synced', 'All cloud database variables zeroed out.');
+            }
+        }
+
+        // Binding variables into global window context to guarantee native interaction
+        window.toggleSidebar = toggleSidebar;
+        window.toggleTheme = toggleTheme;
+        window.addNewSite = addNewSite;
+        window.deleteSite = deleteSite;
+        window.switchTab = switchTab;
+        window.addModuleEntry = addModuleEntry;
+        window.deleteModuleItem = deleteModuleItem;
+        window.triggerSearch = triggerSearch;
+        window.exportDataDump = exportDataDump;
+        window.clearDatabase = clearDatabase;
+    </script>
+</body>
+</html>
