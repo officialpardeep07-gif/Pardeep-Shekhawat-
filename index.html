@@ -281,7 +281,9 @@
                 </button>
                 <div class="flex-1 relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-xs"></i>
-                    <input type="text" oninput="triggerSearch(this.value)" placeholder="Search anything dynamically..." class="w-full bg-slate-100 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-800 focus:border-blue-500/50 rounded-lg pl-9 pr-4 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none transition-all">
+                    <input id="global-search-input" type="text" oninput="triggerSearch(this.value)" onfocus="triggerSearch(this.value)" placeholder="Search anything dynamically..." class="w-full bg-slate-100 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-800 focus:border-blue-500/50 rounded-lg pl-9 pr-4 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none transition-all">
+                    <button type="button" onclick="clearGlobalSearch()" id="global-search-clear" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-[10px]"><i class="fa-solid fa-xmark"></i></button>
+                    <div id="global-search-results" class="hidden absolute left-0 right-0 top-full mt-2 max-h-96 overflow-y-auto glass-card bg-white dark:bg-[#0b1129] border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-40 p-2 space-y-1"></div>
                 </div>
             </div>
             <div class="text-[11px] font-mono text-slate-500 bg-slate-200 dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-800/60">
@@ -1053,18 +1055,16 @@
                     if (processed === selectedFiles.length) finishUpload();
                     return;
                 }
-                // For code files, let the user set the saved name themselves instead of forcing the original filename
+                // Let the user set the saved name themselves for every upload, so it's easy to recognize later
                 let savedName = file.name;
-                if (key === 'code') {
-                    const entered = prompt(`Save "${file.name}" as (file name):`, file.name);
-                    if (entered === null) {
-                        rejected++;
-                        processed++;
-                        if (processed === selectedFiles.length) finishUpload();
-                        return;
-                    }
-                    if (entered.trim()) savedName = entered.trim();
+                const entered = prompt(`Save "${file.name}" as (file name):`, file.name);
+                if (entered === null) {
+                    rejected++;
+                    processed++;
+                    if (processed === selectedFiles.length) finishUpload();
+                    return;
                 }
+                if (entered.trim()) savedName = entered.trim();
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     vaultData[key].push({
@@ -1198,16 +1198,129 @@
             }, 3000);
         }
 
-        function triggerSearch(val) {
-            if(val.length > 2) {
-                showToast('Searching Real-time', `Filtering indexes for query: "${val}"`);
-            }
+        // Which vault categories a global search should look inside, and how to label/icon each
+        const SEARCH_CATEGORY_META = {
+            sites: { label: 'Site Links', icon: 'fa-link', tab: 'dashboard' },
+            passwords: { label: 'Password Vault', icon: 'fa-key', tab: 'passwords' },
+            files: { label: 'Files (Docs/ZIP)', icon: 'fa-folder', tab: 'files' },
+            photos: { label: 'Photos Gallery', icon: 'fa-image', tab: 'photos' },
+            videos: { label: 'Videos Bin', icon: 'fa-video', tab: 'videos' },
+            documents: { label: 'Official Documents', icon: 'fa-file-lines', tab: 'documents' },
+            excel: { label: 'Excel Sheets', icon: 'fa-file-excel', tab: 'excel' },
+            code: { label: 'Code Files', icon: 'fa-file-code', tab: 'code' },
+            notes: { label: 'Documentation Notes', icon: 'fa-note-sticky', tab: 'notes' },
+            projects: { label: 'Projects Pipeline', icon: 'fa-code', tab: 'projects' }
+        };
+
+        // Scans every category in vaultData for a name/text match against the query
+        function performGlobalSearch(query) {
+            const q = query.trim().toLowerCase();
+            if (!q) return [];
+            const results = [];
+
+            (vaultData.sites || []).forEach((item, idx) => {
+                const label = item.name || item.url || 'Untitled Site';
+                if (label.toLowerCase().includes(q) || (item.url || '').toLowerCase().includes(q)) {
+                    results.push({ category: 'sites', label, sub: item.url || '', idx });
+                }
+            });
+
+            (vaultData.passwords || []).forEach((item, idx) => {
+                const label = item.site || 'Untitled Credential';
+                if (label.toLowerCase().includes(q) || (item.username || '').toLowerCase().includes(q) || (item.url || '').toLowerCase().includes(q)) {
+                    results.push({ category: 'passwords', label, sub: item.username || '', idx });
+                }
+            });
+
+            STORAGE_CATEGORIES.forEach((cat) => {
+                (vaultData[cat] || []).forEach((item, idx) => {
+                    const name = item && typeof item === 'object' ? (item.name || '') : String(item);
+                    if (name.toLowerCase().includes(q)) {
+                        results.push({ category: cat, label: name, sub: item && item.size ? formatFileSize(item.size) : '', idx, icon: item && typeof item === 'object' ? getFileIcon(item.type, item.name) : null });
+                    }
+                });
+            });
+
+            ['notes', 'projects'].forEach((cat) => {
+                (vaultData[cat] || []).forEach((item, idx) => {
+                    const text = typeof item === 'object' ? JSON.stringify(item) : String(item);
+                    if (text.toLowerCase().includes(q)) {
+                        results.push({ category: cat, label: text.length > 60 ? text.slice(0, 60) + '…' : text, sub: '', idx });
+                    }
+                });
+            });
+
+            return results.slice(0, 25);
         }
+
+        function triggerSearch(val) {
+            const resultsEl = document.getElementById('global-search-results');
+            const clearBtn = document.getElementById('global-search-clear');
+            if (!resultsEl) return;
+
+            if (!val || !val.trim()) {
+                resultsEl.classList.add('hidden');
+                resultsEl.innerHTML = '';
+                if (clearBtn) clearBtn.classList.add('hidden');
+                return;
+            }
+            if (clearBtn) clearBtn.classList.remove('hidden');
+
+            const matches = performGlobalSearch(val);
+            if (matches.length === 0) {
+                resultsEl.innerHTML = `<p class="text-xs text-slate-400 italic px-2 py-3">No matches found for "${val}".</p>`;
+            } else {
+                resultsEl.innerHTML = matches.map((m) => {
+                    const meta = SEARCH_CATEGORY_META[m.category] || { label: m.category, icon: 'fa-file', tab: m.category };
+                    const icon = m.icon || meta.icon;
+                    return `
+                        <button onclick="goToSearchResult('${meta.tab}')" class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center gap-3 transition-all">
+                            <div class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center shrink-0"><i class="fa-solid ${icon} text-blue-500 dark:text-blue-400 text-xs"></i></div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">${m.label}</p>
+                                <p class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">${meta.label}${m.sub ? ' • ' + m.sub : ''}</p>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-slate-300 dark:text-slate-600 text-[10px]"></i>
+                        </button>
+                    `;
+                }).join('');
+            }
+            resultsEl.classList.remove('hidden');
+        }
+        window.triggerSearch = triggerSearch;
+
+        function goToSearchResult(tab) {
+            document.getElementById('global-search-results').classList.add('hidden');
+            switchTab(tab);
+        }
+        window.goToSearchResult = goToSearchResult;
+
+        function clearGlobalSearch() {
+            const input = document.getElementById('global-search-input');
+            input.value = '';
+            triggerSearch('');
+            input.focus();
+        }
+        window.clearGlobalSearch = clearGlobalSearch;
+
+        // Close the search results dropdown when clicking anywhere outside it
+        document.addEventListener('click', function(e) {
+            const wrap = document.getElementById('global-search-input');
+            const resultsEl = document.getElementById('global-search-results');
+            if (!resultsEl || resultsEl.classList.contains('hidden')) return;
+            if (wrap && (wrap === e.target)) return;
+            if (resultsEl.contains(e.target)) return;
+            resultsEl.classList.add('hidden');
+        });
 
         document.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
                 e.preventDefault();
-                showToast('Global Search', 'Dynamic filtering layer is active.');
+                document.getElementById('global-search-input').focus();
+            }
+            if (e.key === 'Escape') {
+                const resultsEl = document.getElementById('global-search-results');
+                if (resultsEl) resultsEl.classList.add('hidden');
             }
         });
 
