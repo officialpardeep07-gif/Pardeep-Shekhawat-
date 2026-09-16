@@ -817,6 +817,29 @@
             return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
         }
 
+        // If a name is already used in this category (or already claimed earlier in the same upload batch),
+        // append -1, -2, -3... (keeping the extension) until it's unique
+        function getUniqueSavedName(baseName, key, extraTakenLower) {
+            const existing = (vaultData[key] || []).map(it => (it && typeof it === 'object' ? (it.name || '') : String(it)).toLowerCase());
+            const taken = extraTakenLower || new Set();
+            const isTaken = (n) => existing.includes(n) || taken.has(n);
+            if (!isTaken(baseName.toLowerCase())) return baseName;
+
+            const lastDot = baseName.lastIndexOf('.');
+            let core = baseName, ext = '';
+            if (lastDot > 0) {
+                core = baseName.slice(0, lastDot);
+                ext = baseName.slice(lastDot);
+            }
+            let n = 1;
+            let candidate = `${core}-${n}${ext}`;
+            while (isTaken(candidate.toLowerCase())) {
+                n++;
+                candidate = `${core}-${n}${ext}`;
+            }
+            return candidate;
+        }
+
         // Pick an icon based on mime type / file extension
         function getFileIcon(type, name) {
             const ext = (name || '').split('.').pop().toLowerCase();
@@ -1047,6 +1070,7 @@
 
             if (!vaultData[key]) vaultData[key] = [];
             if (progressWrap) progressWrap.classList.remove('hidden');
+            const namesClaimedThisBatch = new Set(); // tracks names already assigned within this same upload batch
 
             selectedFiles.forEach((file) => {
                 if (file.size > MAX_FILE_BYTES) {
@@ -1065,6 +1089,9 @@
                     return;
                 }
                 if (entered.trim()) savedName = entered.trim();
+                // Avoid overwriting/confusing an existing entry with the same name — auto-suffix -1, -2, ...
+                savedName = getUniqueSavedName(savedName, key, namesClaimedThisBatch);
+                namesClaimedThisBatch.add(savedName.toLowerCase());
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     vaultData[key].push({
