@@ -421,15 +421,21 @@
             renderSiteLinks();
         });
 
-        // Save records instantly to Firebase Realtime Database
-        function saveData() {
-            set(dbRef, vaultData)
-                .then(() => {
-                    updateDashboardStats();
-                })
-                .catch((error) => {
-                    console.error("Firebase Cloud Sync Error: ", error);
-                });
+        // Save records to Firebase Realtime Database.
+        // Pass the category key(s) that changed (e.g. 'passwords', or ['code','trash']) so only that
+        // slice of data is re-uploaded — writing the whole vault (all base64 files) on every change was
+        // what made saves feel slow. Call with no argument only when the entire vault must be overwritten.
+        function saveData(keys) {
+            if (!keys) {
+                set(dbRef, vaultData)
+                    .then(() => { updateDashboardStats(); })
+                    .catch((error) => { console.error("Firebase Cloud Sync Error: ", error); });
+                return;
+            }
+            const keyList = Array.isArray(keys) ? keys : [keys];
+            Promise.all(keyList.map(k => set(ref(db, 'vaultData/' + k), vaultData[k] ?? [])))
+                .then(() => { updateDashboardStats(); })
+                .catch((error) => { console.error("Firebase Cloud Sync Error: ", error); });
         }
 
         // Real-time Clock and Date initialization logic
@@ -490,6 +496,23 @@
             }
             startRealtimeSystemClock();
             renderNightSky();
+            requestScreenWakeLock();
+        });
+
+        // Keeps the screen from auto-locking/sleeping while this page is open (re-acquired whenever the tab becomes visible again)
+        let screenWakeLock = null;
+        async function requestScreenWakeLock() {
+            if (!('wakeLock' in navigator)) return; // not supported on this browser — safe no-op
+            try {
+                screenWakeLock = await navigator.wakeLock.request('screen');
+                screenWakeLock.addEventListener('release', () => { screenWakeLock = null; });
+            } catch (err) {
+                // Permission or system-level denial — nothing to do, page just behaves as before
+                console.warn('Screen Wake Lock unavailable:', err.message);
+            }
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') requestScreenWakeLock();
         });
 
         // Sidebar Panel controller
@@ -536,7 +559,7 @@
             if(!url) return;
 
             vaultData.sites.push({ name: name, url: normalizeUrl(url) });
-            saveData();
+            saveData('sites');
             renderSiteLinks();
             showToast('Site Added', `Successfully injected "${name}" into directory.`);
         }
@@ -581,7 +604,7 @@
 
         function deleteSite(index) {
             vaultData.sites.splice(index, 1);
-            saveData();
+            saveData('sites');
             renderSiteLinks();
             showToast('Deleted', 'Site entry removed.');
         }
@@ -1052,7 +1075,7 @@
             } else {
                 vaultData.passwords.push(entry);
             }
-            saveData();
+            saveData('passwords');
             closePasswordModal();
             switchTab('passwords');
             showToast('Secure Key Saved', `Credentials for "${site}" stored safely.`);
@@ -1118,7 +1141,7 @@
                 if (progressWrap) progressWrap.classList.add('hidden');
                 event.target.value = '';
                 if (accepted > 0) {
-                    saveData();
+                    saveData(key);
                 }
                 switchTab(viewName);
                 if (rejected > 0) {
@@ -1137,7 +1160,7 @@
 
             if(!vaultData[key]) vaultData[key] = [];
             vaultData[key].push(value);
-            saveData();
+            saveData(key);
             switchTab(viewName); 
             showToast('Data Stored', 'Vault ecosystem logged item safely.');
         }
@@ -1150,7 +1173,7 @@
                 item: removed,
                 deletedAt: new Date().toLocaleString('en-GB')
             });
-            saveData();
+            saveData([key, 'trash']);
             switchTab(viewName);
             showToast('Moved to Recycle Bin', 'Item can be restored from the Recycle Bin.');
         }
@@ -1187,7 +1210,7 @@
             if (!vaultData[entry.originalKey]) vaultData[entry.originalKey] = [];
             vaultData[entry.originalKey].push(entry.item);
             vaultData.trash.splice(idx, 1);
-            saveData();
+            saveData([entry.originalKey, 'trash']);
             switchTab('trash');
             showToast('Item Restored', `Restored back to ${entry.originalKey}.`);
         }
@@ -1196,7 +1219,7 @@
         function permanentlyDeleteTrashItem(idx) {
             if (!confirm('Permanently delete this item? This cannot be undone.')) return;
             vaultData.trash.splice(idx, 1);
-            saveData();
+            saveData('trash');
             switchTab('trash');
         }
         window.permanentlyDeleteTrashItem = permanentlyDeleteTrashItem;
@@ -1204,7 +1227,7 @@
         function emptyTrash() {
             if (!confirm('Permanently delete ALL items in the Recycle Bin? This cannot be undone.')) return;
             vaultData.trash = [];
-            saveData();
+            saveData('trash');
             switchTab('trash');
             showToast('Recycle Bin Emptied', 'All trashed items were permanently removed.');
         }
